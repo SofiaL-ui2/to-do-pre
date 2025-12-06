@@ -7,75 +7,80 @@ let items = [
   "Помыть посуду",
 ];
 
-const listElement = document.querySelector(".to-do_list");
-const formElement = document.querySelector(".to-do_form");
-const inputElement = document.querySelector(".to-do_input");
+const STORAGE_KEY = "to-do_tasks";
+
+const listElement = document.querySelector(".to-do__list");
+const formElement = document.querySelector(".to-do__form");
+const inputElement = document.querySelector(".to-do__input");
 
 function loadTasks() {
-  const savedTasks = localStorage.getItem("todoTasks");
-  if (savedTasks) {
-    items = JSON.parse(savedTasks);
-  }
-
-  listElement.innerHTML = ""; 
-  items.forEach((itemText) => {
-    const itemElement = createItem(itemText);
-    listElement.append(itemElement);
-  });
+  const savedData = localStorage.getItem(STORAGE_KEY);
+  return savedData ? JSON.parse(savedData) : items;
 }
 
 function createItem(itemText) {
-  const template = document.getElementById("to-do_item-template");
-  const clone = template.content.querySelector(".to-do_item").cloneNode(true);
-  const textElement = clone.querySelector(".to-do_item-text");
-  const deleteButton = clone.querySelector(".to-do_item-button_type_delete");
-  const duplicateButton = clone.querySelector(".to-do_item-button_type_duplicate");
-  const editButton = clone.querySelector(".to-do_item-button_type_edit");
+  const templateNode = document.getElementById("to-do__item-template");
+  const itemClone = templateNode.content.querySelector(".to-do__item").cloneNode(true);
+  const taskTextElement = itemClone.querySelector(".to-do__item-text");
+  const deleteBtn = itemClone.querySelector(".to-do__item-button_type_delete");
+  const duplicateBtn = itemClone.querySelector(".to-do__item-button_type_duplicate");
+  const editBtn = itemClone.querySelector(".to-do__item-button_type_edit");
 
-  textElement.textContent = itemText;
+  taskTextElement.textContent = itemText;
 
-  deleteButton.addEventListener("click", () => {
-    clone.remove();
-    saveTasks(getTasksFromDOM());
+  deleteBtn.addEventListener("click", () => {
+    itemClone.remove();
+    const currentItems = getTasksFromDOM();
+    saveTasks(currentItems);
   });
 
-  duplicateButton.addEventListener("click", () => {
-    const duplicatedItem = createItem(itemText);
-    listElement.append(duplicatedItem);
-    saveTasks(getTasksFromDOM());
+  duplicateBtn.addEventListener("click", () => {
+    const originalText = taskTextElement.textContent;
+    const newClone = createItem(originalText);
+    listElement.prepend(newClone);
+    const currentItems = getTasksFromDOM();
+    saveTasks(currentItems);
   });
 
-  editButton.addEventListener("click", () => {
-    const newText = prompt("Редактировать задачу:", itemText);
-    if (newText !== null && newText.trim() !== "") {
-      textElement.textContent = newText;
-      saveTasks(getTasksFromDOM());
-    }
+  editBtn.addEventListener("click", () => {
+    taskTextElement.setAttribute("contenteditable", "true");
+    taskTextElement.focus();
   });
 
-  return clone;
+  taskTextElement.addEventListener("blur", () => {
+    taskTextElement.setAttribute("contenteditable", "false");
+    const currentItems = getTasksFromDOM();
+    saveTasks(currentItems);
+  });
+
+  return itemClone;
 }
 
 function getTasksFromDOM() {
-  const taskElements = listElement.querySelectorAll(".to-do_item-text");
-  return Array.from(taskElements).map((el) => el.textContent);
+  const allTaskTexts = document.querySelectorAll(".to-do__item-text");
+  const extractedItems = [];
+  allTaskTexts.forEach((element) => extractedItems.push(element.textContent));
+  return extractedItems;
 }
 
-function saveTasks(tasks) {
-  localStorage.setItem("todoTasks", JSON.stringify(tasks));
+function saveTasks(tasksArray) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksArray));
 }
+
+items = loadTasks();
+items.forEach((task) => listElement.append(createItem(task)));
 
 formElement.addEventListener("submit", (e) => {
   e.preventDefault();
-  const newTask = inputElement.value.trim();
-  if (newTask) {
-    const newItem = createItem(newTask);
-    listElement.append(newItem);
-    saveTasks(getTasksFromDOM());
-    inputElement.value = "";
-  }
-});
 
-document.addEventListener("DOMContentLoaded", () => {
-  loadTasks();
+  const inputValue = inputElement.value.trim();
+  if (!inputValue) return;
+
+  const newItem = createItem(inputValue);
+  listElement.prepend(newItem);
+
+  items = getTasksFromDOM();
+  saveTasks(items);
+
+  inputElement.value = "";
 });
